@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-sandbox"
+version = "0.2.0"
+description = "Config-driven RAG comparison engine with analytical deep dives."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # LangChain ecosystem
+    "langchain>=0.3",
+    "langchain-openai>=0.3",
+    "langchain-anthropic>=0.3",
+    "langchain-chroma>=0.2",
+    "langchain-community>=0.3",
+    "langchain-text-splitters>=0.3",
+    "langchain-experimental>=0.3",
+    "langgraph>=0.2",
+    # Still required as underlying SDK deps
+    "openai>=1.68.0",
+    "anthropic>=0.52.0",
+    # Evaluation
+    "ragas>=0.2",
+    "datasets>=2.20.0",
+    # Analysis
+    "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4",
+    "umap-learn>=0.5",
+    "plotly>=5.20",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    # App
+    "pydantic>=2.7.0",
+    "pyyaml>=6.0.1",
+    "streamlit>=1.44.0",
+    "structlog>=24.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.1.0", "jupyter>=1.0"]
+
+[tool.setuptools.packages.find]
+include = ["rag", "evaluation", "experiments", "dashboard", "analysis", "tests"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

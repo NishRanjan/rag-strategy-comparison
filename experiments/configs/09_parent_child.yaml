@@ -1,0 +1,23 @@
+experiment_id: "09_parent_child"
+description: "Parent-child chunking — do richer retrieved contexts improve generation quality?"
+
+dataset:
+  path: "experiments/datasets/fmcg_product_qa.jsonl"
+  format: "question_answer"
+
+pipeline:
+  data_source: "data/fmcg_docs"
+  llm: { provider: "azure_openai", model: "gpt-4o", temperature: 0.1, max_tokens: 400 }
+  embedding: { provider: "azure_openai", model: "text-embedding-3-small" }
+  chunking: { strategy: "parent_child", chunk_size: 128, overlap: 20 }
+  retrieval: { strategy: "hybrid", top_k: 8, alpha: 0.6 }
+  reranker: { enabled: true, top_k_after_rerank: 5 }
+  query_transform: "none"
+  generation: "stuff"
+  advanced: "none"
+
+evaluation:
+  metrics: [answer_correctness, faithfulness, context_precision, context_recall]
+  llm_judge:
+    provider: "azure_openai"
+    model: "gpt-4o"

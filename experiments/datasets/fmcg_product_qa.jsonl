@@ -1,0 +1,11 @@
+{"query_id":"q001","query":"What kind of product is VitaOil Plus?","ground_truth":"VitaOil Plus is a fortified sunflower cooking oil."}
+{"query_id":"q002","query":"Which product is promoted for reduced frying odor?","ground_truth":"VitaOil Plus is promoted for reduced frying odor."}
+{"query_id":"q003","query":"What fragrance is associated with FreshSpark Dish Gel?","ground_truth":"FreshSpark Dish Gel lemon variant has a citrus fragrance."}
+{"query_id":"q004","query":"Is CleanNest Surface Spray recommended for unfinished wood?","ground_truth":"No, CleanNest Surface Spray is not recommended for unfinished wood."}
+{"query_id":"q005","query":"Who is NutriMalt Choco Drink positioned for?","ground_truth":"NutriMalt Choco Drink is positioned for school-age children."}
+{"query_id":"q006","query":"Can NutriMalt Choco Drink be served cold?","ground_truth":"Yes, NutriMalt Choco Drink can be served hot or cold."}
+{"query_id":"q007","query":"Which detergent is suitable for front-load washing machines?","ground_truth":"GlowSoft Laundry Liquid is suitable for front-load washing machines."}
+{"query_id":"q008","query":"What should users do after washing utensils with FreshSpark Dish Gel?","ground_truth":"Users should rinse utensils thoroughly after washing."}
+{"query_id":"q009","query":"How should CleanNest Surface Spray be handled on food-contact surfaces?","ground_truth":"Food-contact surfaces should be wiped again with clean water after use."}
+{"query_id":"q010","query":"Should GlowSoft Laundry Liquid be mixed with chlorine bleach?","ground_truth":"No, GlowSoft Laundry Liquid should not be mixed with chlorine bleach in the same wash compartment."}
+

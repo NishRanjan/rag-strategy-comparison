@@ -1,0 +1,23 @@
+experiment_id: "01_baseline_naive"
+description: "Fixed chunking + dense retrieval + stuff generation + GPT-4o-mini baseline."
+
+dataset:
+  path: "experiments/datasets/fmcg_product_qa.jsonl"
+  format: "question_answer"
+
+pipeline:
+  data_source: "data/fmcg_docs"
+  llm: { provider: "azure_openai", model: "gpt-4o-mini", temperature: 0.1, max_tokens: 400 }
+  embedding: { provider: "azure_openai", model: "text-embedding-3-small" }
+  chunking: { strategy: "fixed", chunk_size: 128, overlap: 20 }
+  retrieval: { strategy: "dense", top_k: 3 }
+  reranker: { enabled: false }
+  query_transform: "none"
+  generation: "stuff"
+  advanced: "none"
+
+evaluation:
+  metrics: [answer_correctness, faithfulness, context_precision, context_recall]
+  llm_judge:
+    provider: "azure_openai"
+    model: "gpt-4o"
