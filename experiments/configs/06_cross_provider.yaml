@@ -1,5 +1,5 @@
 experiment_id: "06_cross_provider"
-description: "Claude Sonnet instead of GPT-4o on the same hybrid+rerank stack — provider comparison."
+description: "Gemini 2.0 Flash instead of Gemini 2.5 Flash on the same hybrid+rerank stack - model comparison."
 
 dataset:
   path: "experiments/datasets/fmcg_product_qa.jsonl"
@@ -7,17 +7,18 @@ dataset:
 
 pipeline:
   data_source: "data/fmcg_docs"
-  llm: { provider: "anthropic", model: "claude-3-5-sonnet-latest", temperature: 0.1, max_tokens: 400 }
-  embedding: { provider: "azure_openai", model: "text-embedding-3-small" }
+  llm: { provider: "gemini", model: "gemini-2.0-flash", temperature: 0.1, max_tokens: 400 }
+  embedding: { provider: "gemini", model: "models/gemini-embedding-001" }
   chunking: { strategy: "semantic", chunk_size: 128, overlap: 20 }
   retrieval: { strategy: "hybrid", top_k: 8, alpha: 0.6 }
   reranker: { enabled: true, top_k_after_rerank: 5 }
   query_transform: "none"
   generation: "stuff"
   advanced: "none"
+  rate_limit: { sleep_between_queries: 1, sleep_between_experiments: 5, max_retries: 3, retry_backoff: 2 }
 
 evaluation:
   metrics: [answer_correctness, faithfulness, context_precision, context_recall]
   llm_judge:
-    provider: "azure_openai"
-    model: "gpt-4o"
+    provider: "gemini"
+    model: "gemini-2.5-flash"

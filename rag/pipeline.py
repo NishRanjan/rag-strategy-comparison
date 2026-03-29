@@ -85,6 +85,13 @@ def _extract_usage(cb) -> tuple[int, float]:
     return int(tokens), float(cost)
 
 
+def _config_value(config_value, key: str, default):
+    """Support both string-style and nested-dict-style pipeline configs."""
+    if isinstance(config_value, dict):
+        return config_value.get(key, default)
+    return config_value if config_value is not None else default
+
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
@@ -108,6 +115,11 @@ class Pipeline:
     def prepare(self) -> None:
         """Load source documents, chunk, embed, index, and build the retriever."""
         pipe_cfg = self.config["pipeline"]
+        llm_cfg = pipe_cfg.get("llm")
+        if llm_cfg is None and isinstance(pipe_cfg.get("generation"), dict):
+            llm_cfg = pipe_cfg["generation"].get("llm")
+        if llm_cfg is None:
+            raise ValueError("Pipeline config must include pipeline.llm or pipeline.generation.llm")
 
         embeddings = build_embeddings(pipe_cfg["embedding"])
         docs = load_documents(pipe_cfg["data_source"])
@@ -120,7 +132,7 @@ class Pipeline:
         retriever = build_retriever(pipe_cfg["retrieval"], vector_store, self._chunks)
         self._retriever = wrap_reranker(retriever, pipe_cfg.get("reranker", {"enabled": False}))
 
-        self._llm = build_llm(pipe_cfg["llm"])
+        self._llm = build_llm(llm_cfg)
         self._prepared = True
         logger.info("pipeline_prepared", docs=len(docs), chunks=len(self._chunks))
 
@@ -137,9 +149,10 @@ class Pipeline:
             self.prepare()
 
         pipe_cfg = self.config["pipeline"]
-        generation_strategy: str = pipe_cfg.get("generation", "stuff")
-        query_transform: str = pipe_cfg.get("query_transform", "none")
-        advanced: str = pipe_cfg.get("advanced", "none")
+        rate_limit_cfg: dict = pipe_cfg.get("rate_limit", {})
+        generation_strategy: str = _config_value(pipe_cfg.get("generation"), "strategy", "stuff")
+        query_transform: str = _config_value(pipe_cfg.get("query_transform"), "strategy", "none")
+        advanced: str = _config_value(pipe_cfg.get("advanced"), "pattern", "none")
 
         overall_start = time.perf_counter()
         effective_query = query
@@ -150,7 +163,7 @@ class Pipeline:
         with _token_callback() as cb:
 
             if advanced == "crag":
-                graph = build_crag_graph(self._llm, self._retriever)
+                graph = build_crag_graph(self._llm, self._retriever, rate_limit_cfg)
                 state = graph.invoke(
                     {"question": query, "documents": [], "generation": "", "retry_count": 0}
                 )
@@ -162,9 +175,17 @@ class Pipeline:
                 # --- Query transform ---
                 retrieval_start = time.perf_counter()
                 if query_transform == "rewrite":
-                    effective_query = rewrite_query(self._llm, query)
+                    effective_query = rewrite_query(
+                        self._llm,
+                        query,
+                        rate_limit_config=rate_limit_cfg,
+                    )
                 elif query_transform == "hyde":
-                    effective_query = generate_hyde_query(self._llm, query)
+                    effective_query = generate_hyde_query(
+                        self._llm,
+                        query,
+                        rate_limit_config=rate_limit_cfg,
+                    )
 
                 docs = self._retriever.invoke(effective_query)
                 retrieval_ms = (time.perf_counter() - retrieval_start) * 1000
@@ -172,13 +193,26 @@ class Pipeline:
                 # --- Generation ---
                 gen_start = time.perf_counter()
                 if generation_strategy == "citation_grounded":
-                    answer = answer_with_citation(self._llm, query, docs)
+                    answer = answer_with_citation(
+                        self._llm,
+                        query,
+                        docs,
+                        rate_limit_config=rate_limit_cfg,
+                    )
                 else:
-                    answer = answer_with_stuff(self._llm, query, docs)
+                    answer = answer_with_stuff(
+                        self._llm,
+                        query,
+                        docs,
+                        rate_limit_config=rate_limit_cfg,
+                    )
                 gen_ms = (time.perf_counter() - gen_start) * 1000
 
         overall_ms = (time.perf_counter() - overall_start) * 1000
         total_tokens, cost_usd = _extract_usage(cb)
+        sleep_between_queries = float(rate_limit_cfg.get("sleep_between_queries", 0))
+        if sleep_between_queries > 0:
+            time.sleep(sleep_between_queries)
 
         # Assign rank-based scores (1/rank) because LangChain retrievers don't expose similarity
         # scores through the BaseRetriever interface.

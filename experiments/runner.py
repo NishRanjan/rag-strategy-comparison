@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 import structlog
@@ -61,7 +62,7 @@ def save_result(result: dict, experiment_id: str) -> Path:
     return output_path
 
 
-def run_experiment(config_path: str | Path) -> Path:
+def run_experiment(config_path: str | Path, use_ragas: bool = False) -> Path:
     """Run a single experiment config end-to-end and save the result JSON.
 
     Args:
@@ -92,6 +93,7 @@ def run_experiment(config_path: str | Path) -> Path:
         dataset=dataset,
         experiment_id=config["experiment_id"],
         dataset_id=Path(config["dataset"]["path"]).stem,
+        use_ragas=use_ragas,
         judge_llm=judge_llm,
     )
     output_path = save_result(result.to_dict(), config["experiment_id"])
@@ -104,11 +106,19 @@ def run_experiment(config_path: str | Path) -> Path:
     return output_path
 
 
-def run_all_experiments() -> list[Path]:
+def run_all_experiments(use_ragas: bool = False) -> list[Path]:
     """Run every YAML config in the experiments/configs directory."""
     outputs: list[Path] = []
-    for config_path in sorted(CONFIGS_DIR.glob("*.yaml")):
-        outputs.append(run_experiment(config_path))
+    config_paths = sorted(CONFIGS_DIR.glob("*.yaml"))
+    for index, config_path in enumerate(config_paths):
+        outputs.append(run_experiment(config_path, use_ragas=use_ragas))
+        if index < len(config_paths) - 1:
+            config = load_config(config_path)
+            sleep_seconds = float(
+                config.get("pipeline", {}).get("rate_limit", {}).get("sleep_between_experiments", 0)
+            )
+            if sleep_seconds > 0:
+                time.sleep(sleep_seconds)
     return outputs
 
 
@@ -129,10 +139,10 @@ def main() -> None:
     """Dispatch the requested experiment execution mode."""
     args = parse_args()
     if args.all:
-        run_all_experiments()
+        run_all_experiments(use_ragas=args.ragas)
         return
     if args.config:
-        run_experiment(args.config)
+        run_experiment(args.config, use_ragas=args.ragas)
         return
     raise SystemExit("Specify --config <path> or --all.")
 

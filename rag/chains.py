@@ -1,205 +1,173 @@
-"""LCEL generation chains and LangGraph CRAG state machine."""
+"""Generation helpers and a lightweight CRAG fallback."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import time
 
-from langchain_core.documents import Document
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+import structlog
 
-if TYPE_CHECKING:
-    pass
-
-# ---------------------------------------------------------------------------
-# Prompts
-# ---------------------------------------------------------------------------
-
-STUFF_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "You are a helpful assistant. Answer the question using only the provided context. "
-        "If the context does not contain enough information to answer, say so clearly.",
-    ),
-    ("human", "Context:\n{context}\n\nQuestion: {question}"),
-])
-
-CITATION_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "You are a precise assistant. Answer the question using only the provided context. "
-        "For each factual claim, cite the source snippet using [1], [2], etc.",
-    ),
-    ("human", "Context:\n{context}\n\nQuestion: {question}"),
-])
-
-QUERY_REWRITE_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "Rewrite the user's question to be more specific and retrieval-friendly. "
-        "Return only the rewritten question with no explanation.",
-    ),
-    ("human", "{question}"),
-])
-
-HYDE_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "Write a short hypothetical document (2–4 sentences) that would directly answer this "
-        "question. This hypothetical document will be used to improve retrieval.",
-    ),
-    ("human", "{question}"),
-])
-
-CRAG_GRADE_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        "You are a relevance grader. Is the following document relevant to the question? "
-        "Reply with only 'yes' or 'no'.",
-    ),
-    ("human", "Question: {question}\n\nDocument: {document}"),
-])
+logger = structlog.get_logger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+STUFF_SYSTEM = (
+    "You are a helpful assistant. Answer the question using only the provided context. "
+    "If the context does not contain enough information to answer, say so clearly."
+)
 
-def format_docs(docs: list[Document]) -> str:
-    """Format a list of Documents into a numbered context block."""
+CITATION_SYSTEM = (
+    "You are a precise assistant. Answer the question using only the provided context. "
+    "For each factual claim, cite the source snippet using [1], [2], etc."
+)
+
+QUERY_REWRITE_SYSTEM = (
+    "Rewrite the user's question to be more specific and retrieval-friendly. "
+    "Return only the rewritten question with no explanation."
+)
+
+HYDE_SYSTEM = (
+    "Write a short hypothetical document (2-4 sentences) that would directly answer this "
+    "question. This hypothetical document will be used to improve retrieval."
+)
+
+CRAG_GRADE_SYSTEM = (
+    "You are a relevance grader. Is the following document relevant to the question? "
+    "Reply with only 'yes' or 'no'."
+)
+
+
+def _text_from_response(response) -> str:
+    if isinstance(response, str):
+        return response
+    if hasattr(response, "content"):
+        content = response.content
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return "".join(
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in content
+            )
+    return str(response)
+
+
+def _invoke_llm(llm, prompt: str) -> str:
+    return _text_from_response(llm.invoke(prompt))
+
+
+def format_docs(docs: list) -> str:
+    """Format a list of documents into a numbered context block."""
     return "\n\n---\n\n".join(f"[{i + 1}] {doc.page_content}" for i, doc in enumerate(docs))
 
 
-# ---------------------------------------------------------------------------
-# Generation helpers (context already retrieved)
-# ---------------------------------------------------------------------------
+def invoke_with_retry(llm, prompt: str, rate_limit_config: dict | None = None) -> str:
+    """Invoke an LLM with simple exponential backoff on rate-limit errors."""
+    cfg = rate_limit_config or {}
+    max_retries = int(cfg.get("max_retries", 3))
+    backoff = float(cfg.get("retry_backoff", 2.0))
 
-def answer_with_stuff(llm, question: str, docs: list[Document]) -> str:
-    """Generate an answer using the 'stuff all context' strategy.
-
-    Args:
-        llm: LangChain chat model.
-        question: User query.
-        docs: Retrieved documents.
-
-    Returns:
-        Generated answer string.
-    """
-    chain = STUFF_PROMPT | llm | StrOutputParser()
-    return chain.invoke({"context": format_docs(docs), "question": question})
-
-
-def answer_with_citation(llm, question: str, docs: list[Document]) -> str:
-    """Generate a citation-grounded answer referencing context snippets by number.
-
-    Args:
-        llm: LangChain chat model.
-        question: User query.
-        docs: Retrieved documents.
-
-    Returns:
-        Generated answer with inline citations.
-    """
-    chain = CITATION_PROMPT | llm | StrOutputParser()
-    return chain.invoke({"context": format_docs(docs), "question": question})
+    for attempt in range(max_retries + 1):
+        try:
+            return _invoke_llm(llm, prompt)
+        except Exception as exc:  # noqa: BLE001
+            is_rate_limit = "429" in str(exc) or "rate" in str(exc).lower()
+            if not is_rate_limit or attempt >= max_retries:
+                raise
+            wait_seconds = backoff ** attempt
+            logger.warning(
+                "rate_limited_retry",
+                attempt=attempt + 1,
+                max_retries=max_retries,
+                wait_seconds=wait_seconds,
+                error=str(exc),
+            )
+            time.sleep(wait_seconds)
 
 
-def rewrite_query(llm, question: str) -> str:
-    """Rewrite a query to be more retrieval-friendly.
-
-    Config key: query_transform = "rewrite"
-    """
-    chain = QUERY_REWRITE_PROMPT | llm | StrOutputParser()
-    return chain.invoke({"question": question})
-
-
-def generate_hyde_query(llm, question: str) -> str:
-    """Generate a hypothetical document for HyDE retrieval.
-
-    Config key: query_transform = "hyde"
-    """
-    chain = HYDE_PROMPT | llm | StrOutputParser()
-    return chain.invoke({"question": question})
+def answer_with_stuff(
+    llm,
+    question: str,
+    docs: list,
+    rate_limit_config: dict | None = None,
+) -> str:
+    prompt = (
+        f"{STUFF_SYSTEM}\n\n"
+        f"Context:\n{format_docs(docs)}\n\n"
+        f"Question: {question}"
+    )
+    return invoke_with_retry(llm, prompt, rate_limit_config)
 
 
-# ---------------------------------------------------------------------------
-# LangGraph CRAG state machine
-# ---------------------------------------------------------------------------
+def answer_with_citation(
+    llm,
+    question: str,
+    docs: list,
+    rate_limit_config: dict | None = None,
+) -> str:
+    prompt = (
+        f"{CITATION_SYSTEM}\n\n"
+        f"Context:\n{format_docs(docs)}\n\n"
+        f"Question: {question}"
+    )
+    return invoke_with_retry(llm, prompt, rate_limit_config)
 
-def build_crag_graph(llm, retriever):
-    """Build and compile a CRAG self-correction graph using LangGraph.
 
-    The graph: retrieve → grade → (generate | rewrite → retrieve → grade → generate).
-    One retry is allowed. If no relevant docs are found after retry, generates anyway.
+def rewrite_query(llm, question: str, rate_limit_config: dict | None = None) -> str:
+    prompt = f"{QUERY_REWRITE_SYSTEM}\n\n{question}"
+    return invoke_with_retry(llm, prompt, rate_limit_config)
 
-    Config key: advanced = "crag"
 
-    Args:
-        llm: LangChain chat model used for grading, rewriting, and generating.
-        retriever: LangChain retriever.
+def generate_hyde_query(llm, question: str, rate_limit_config: dict | None = None) -> str:
+    prompt = f"{HYDE_SYSTEM}\n\n{question}"
+    return invoke_with_retry(llm, prompt, rate_limit_config)
 
-    Returns:
-        Compiled LangGraph CompiledGraph.
-    """
-    from typing import TypedDict
 
-    from langgraph.graph import END, StateGraph
+class _SimpleCRAGGraph:
+    def __init__(self, llm, retriever, rate_limit_config: dict | None = None) -> None:
+        self._llm = llm
+        self._retriever = retriever
+        self._rate_limit_config = rate_limit_config
 
-    class CRAGState(TypedDict):
-        """Mutable state passed between CRAG nodes."""
-
-        question: str
-        documents: list[Document]
-        generation: str
-        retry_count: int
-
-    grade_chain = CRAG_GRADE_PROMPT | llm | StrOutputParser()
-    rewrite_chain = QUERY_REWRITE_PROMPT | llm | StrOutputParser()
-
-    def retrieve_node(state: CRAGState) -> CRAGState:
-        """Retrieve documents for the current question."""
-        docs = retriever.invoke(state["question"])
-        return {**state, "documents": docs}
-
-    def grade_node(state: CRAGState) -> CRAGState:
-        """Filter retrieved documents to only those relevant to the question."""
-        relevant = []
-        for doc in state["documents"]:
-            verdict = grade_chain.invoke(
-                {"question": state["question"], "document": doc.page_content}
+    def invoke(self, state: dict) -> dict:
+        question = state["question"]
+        retry_count = state.get("retry_count", 0)
+        docs = self._retriever.invoke(question)
+        relevant_docs = []
+        for doc in docs:
+            verdict = invoke_with_retry(
+                self._llm,
+                (
+                    f"{CRAG_GRADE_SYSTEM}\n\n"
+                    f"Question: {question}\n\n"
+                    f"Document: {doc.page_content}"
+                ),
+                self._rate_limit_config,
             )
             if "yes" in verdict.lower():
-                relevant.append(doc)
-        return {**state, "documents": relevant}
+                relevant_docs.append(doc)
 
-    def generate_node(state: CRAGState) -> CRAGState:
-        """Generate an answer from the (filtered) documents."""
-        answer = answer_with_stuff(llm, state["question"], state["documents"])
-        return {**state, "generation": answer}
+        if not relevant_docs and retry_count < 1:
+            rewritten = rewrite_query(
+                self._llm,
+                question,
+                rate_limit_config=self._rate_limit_config,
+            )
+            return self.invoke(
+                {
+                    **state,
+                    "question": rewritten,
+                    "retry_count": retry_count + 1,
+                }
+            )
 
-    def rewrite_node(state: CRAGState) -> CRAGState:
-        """Rewrite the query and increment retry counter."""
-        rewritten = rewrite_chain.invoke({"question": state["question"]})
-        return {**state, "question": rewritten, "retry_count": state.get("retry_count", 0) + 1}
+        generation = answer_with_stuff(
+            self._llm,
+            question,
+            relevant_docs,
+            rate_limit_config=self._rate_limit_config,
+        )
+        return {**state, "documents": relevant_docs, "generation": generation}
 
-    def decide_action(state: CRAGState) -> str:
-        """Route: generate if docs exist or max retries reached, else rewrite."""
-        if state["documents"] or state.get("retry_count", 0) >= 1:
-            return "generate"
-        return "rewrite"
 
-    graph = StateGraph(CRAGState)
-    graph.add_node("retrieve", retrieve_node)
-    graph.add_node("grade", grade_node)
-    graph.add_node("generate", generate_node)
-    graph.add_node("rewrite", rewrite_node)
-
-    graph.set_entry_point("retrieve")
-    graph.add_edge("retrieve", "grade")
-    graph.add_conditional_edges(
-        "grade", decide_action, {"generate": "generate", "rewrite": "rewrite"}
-    )
-    graph.add_edge("rewrite", "retrieve")
-    graph.add_edge("generate", END)
-
-    return graph.compile()
+def build_crag_graph(llm, retriever, rate_limit_config: dict | None = None):
+    """Build a lightweight CRAG graph facade with the same invoke contract."""
+    return _SimpleCRAGGraph(llm, retriever, rate_limit_config)

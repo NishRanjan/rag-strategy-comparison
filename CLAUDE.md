@@ -73,20 +73,21 @@ dataset:
 
 pipeline:
   data_source: "data/fmcg_docs"
-  llm:       { provider: "azure_openai", model: "gpt-4o-mini", temperature: 0.1, max_tokens: 400 }
-  embedding: { provider: "azure_openai", model: "text-embedding-3-small" }
+  llm:       { provider: "gemini", model: "gemini-2.5-flash-lite", temperature: 0.1, max_tokens: 400 }
+  embedding: { provider: "gemini", model: "models/gemini-embedding-001" }
   chunking:  { strategy: "fixed", chunk_size: 128, overlap: 20 }   # fixed | semantic | parent_child
   retrieval: { strategy: "dense", top_k: 3 }                       # dense | sparse | hybrid
   reranker:  { enabled: false }
   query_transform: "none"    # none | rewrite | hyde
   generation: "stuff"        # stuff | citation_grounded
   advanced: "none"           # none | crag
+  rate_limit: { sleep_between_queries: 1, sleep_between_experiments: 5, max_retries: 3, retry_backoff: 2 }
 
 evaluation:
   metrics: [answer_correctness, faithfulness, context_precision, context_recall]
   llm_judge:
-    provider: "azure_openai"
-    model: "gpt-4o"
+    provider: "gemini"
+    model: "gemini-2.5-flash"
 ```
 
 ### Pipeline Output (adapter between LangChain and evaluation)
@@ -107,7 +108,7 @@ class PipelineQueryOutput:
     latency_ms: float
     retrieval_latency_ms: float
     generation_latency_ms: float
-    total_tokens: int    # from get_openai_callback(); 0 for Anthropic
+    total_tokens: int    # from Gemini response metadata; 0 if unavailable
     cost_usd: float
     metadata: dict
 ```
@@ -135,12 +136,12 @@ Every pipeline run must produce an `ExperimentResult`. The dashboard and noteboo
 
 | # | Config | What It Tests |
 |---|--------|---------------|
-| 1 | `01_baseline_naive` | Fixed + Dense + Stuff + GPT-4o-mini (cheapest baseline) |
-| 2 | `02_better_llm` | Same but GPT-4o — does LLM quality fix weak retrieval? |
-| 3 | `03_hybrid_retrieval` | Semantic + Hybrid — retrieval upgrade |
+| 1 | `01_baseline_naive` | Fixed + Dense + Stuff + Gemini 2.5 Flash Lite (cheapest baseline) |
+| 2 | `02_better_llm` | Same but Gemini 2.5 Flash — does LLM quality fix weak retrieval? |
+| 3 | `03_hybrid_retrieval` | Semantic chunking + hybrid BM25+dense retrieval |
 | 4 | `04_hybrid_rerank` | Add cross-encoder reranking |
 | 5 | `05_citation_grounded` | Citation-grounded generation |
-| 6 | `06_cross_provider` | Claude Sonnet instead of GPT-4o |
+| 6 | `06_cross_provider` | Gemini 2.0 Flash instead of Gemini 2.5 Flash |
 | 7 | `07_query_rewrite` | Query rewriting before retrieval |
 | 8 | `08_hyde` | HyDE instead of rewrite |
 | 9 | `09_parent_child` | Parent-child chunking |
@@ -200,14 +201,7 @@ jupyter notebook analysis/
 ## Environment Variables
 
 ```
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=...
-AZURE_OPENAI_API_VERSION=2024-06-01
-AZURE_OPENAI_DEPLOYMENT_GPT4O=gpt-4o
-AZURE_OPENAI_DEPLOYMENT_GPT4O_MINI=gpt-4o-mini
-AZURE_OPENAI_DEPLOYMENT_EMBEDDING=text-embedding-3-small
-
-ANTHROPIC_API_KEY=...        # experiment 06 only
+GOOGLE_API_KEY=your-key
 
 CHROMA_PERSIST_DIR=./data/chroma
 ```
