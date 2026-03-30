@@ -9,6 +9,9 @@ from pathlib import Path
 
 import structlog
 import yaml
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from evaluation.evaluator import evaluate_experiment
 from rag.pipeline import build_pipeline

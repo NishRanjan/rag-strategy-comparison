@@ -336,6 +336,7 @@ def build_vector_store(
     Returns:
         Populated Chroma instance ready for similarity search.
     """
+    chunks = [c for c in chunks if c.page_content.strip()]
     persist_dir = os.getenv("CHROMA_PERSIST_DIR", "./data/chroma")
     try:
         from langchain_chroma import Chroma

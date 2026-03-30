@@ -19,6 +19,10 @@ dependencies = [
     "langgraph>=0.2",
     # Gemini SDK
     "google-generativeai>=0.8.5",
+    # Vector store & retrieval
+    "chromadb>=1.0.0",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=3.0.0",
     # Evaluation
     "ragas>=0.2",
     "datasets>=2.20.0",
@@ -30,9 +34,11 @@ dependencies = [
     "plotly>=5.20",
     "matplotlib>=3.8",
     "seaborn>=0.13",
-    # App
+    # App & utilities
     "pydantic>=2.7.0",
+    "pypdf>=4.2.0",
     "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.0",
     "streamlit>=1.44.0",
     "structlog>=24.1.0",
 ]

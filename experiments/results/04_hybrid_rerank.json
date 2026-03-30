@@ -2,26 +2,27 @@
   "experiment_id": "04_hybrid_rerank",
   "pipeline_config": {
     "experiment_id": "04_hybrid_rerank",
-    "description": "Add BGE reranking on top of semantic chunking and hybrid retrieval.",
+    "description": "Add cross-encoder reranking on top of hybrid retrieval - is reranking worth it?",
     "dataset": {
       "path": "experiments/datasets/fmcg_product_qa.jsonl",
       "format": "question_answer"
     },
     "pipeline": {
-      "type": "rag",
       "data_source": "data/fmcg_docs",
+      "llm": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "temperature": 0.1,
+        "max_tokens": 400
+      },
+      "embedding": {
+        "provider": "gemini",
+        "model": "models/gemini-embedding-001"
+      },
       "chunking": {
         "strategy": "semantic",
         "chunk_size": 128,
         "overlap": 20
-      },
-      "embedding": {
-        "model": "text-embedding-3-small",
-        "provider": "azure_openai"
-      },
-      "vector_store": {
-        "provider": "chroma",
-        "collection": "hybrid_rerank"
       },
       "retrieval": {
         "strategy": "hybrid",
@@ -30,23 +31,16 @@
       },
       "reranker": {
         "enabled": true,
-        "model": "bge-reranker-v2-m3",
         "top_k_after_rerank": 5
       },
-      "query_transform": {
-        "strategy": "none"
-      },
-      "generation": {
-        "strategy": "stuff",
-        "llm": {
-          "provider": "azure_openai",
-          "model": "gpt-4o",
-          "temperature": 0.1,
-          "max_tokens": 400
-        }
-      },
-      "advanced": {
-        "pattern": "none"
+      "query_transform": "none",
+      "generation": "stuff",
+      "advanced": "none",
+      "rate_limit": {
+        "sleep_between_queries": 1,
+        "sleep_between_experiments": 5,
+        "max_retries": 3,
+        "retry_backoff": 2
       }
     },
     "evaluation": {
@@ -57,313 +51,333 @@
         "context_recall"
       ],
       "llm_judge": {
-        "provider": "azure_openai",
-        "model": "gpt-4o"
+        "provider": "gemini",
+        "model": "gemini-2.5-flash"
       }
     }
   },
-  "timestamp": "2026-03-28T11:22:31.440598+00:00",
+  "timestamp": "2026-03-29T10:49:40.164603+00:00",
   "dataset_id": "fmcg_product_qa",
   "per_query_results": [
     {
       "query_id": "q001",
       "query": "What kind of product is VitaOil Plus?",
       "ground_truth": "VitaOil Plus is a fortified sunflower cooking oil.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nWhat kind of product is VitaOil Plus?\n\nContext:\n[1] # FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is prom",
+      "generated_answer": "VitaOil Plus is a fortified sunflower cooking oil.",
       "retrieved_contexts": [
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        3.0,
-        3.0,
-        3.0,
         1.0,
-        1.0
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
         "answer_correctness": 1.0,
-        "faithfulness": 0.7166666666666667,
-        "context_precision": 0.4,
+        "faithfulness": 1.0,
+        "context_precision": 0.33,
         "context_recall": 1.0
       },
-      "latency_ms": 0.501299997267779,
-      "total_tokens": 513,
+      "latency_ms": 2551.493400009349,
+      "total_tokens": 973,
       "cost_usd": 0.0
     },
     {
       "query_id": "q002",
       "query": "Which product is promoted for reduced frying odor?",
       "ground_truth": "VitaOil Plus is promoted for reduced frying odor.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nWhich product is promoted for reduced frying odor?\n\nContext:\n[1] # FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon va",
+      "generated_answer": "VitaOil Plus is promoted for reduced frying odor.",
       "retrieved_contexts": [
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
-        "## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        6.0,
-        6.0,
-        3.0,
-        3.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
         "answer_correctness": 1.0,
-        "faithfulness": 0.7241379310344828,
-        "context_precision": 0.55,
+        "faithfulness": 1.0,
+        "context_precision": 0.33,
         "context_recall": 1.0
       },
-      "latency_ms": 0.3107999946223572,
-      "total_tokens": 437,
+      "latency_ms": 2190.25490002241,
+      "total_tokens": 992,
       "cost_usd": 0.0
     },
     {
       "query_id": "q003",
       "query": "What fragrance is associated with FreshSpark Dish Gel?",
       "ground_truth": "FreshSpark Dish Gel lemon variant has a citrus fragrance.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nWhat fragrance is associated with FreshSpark Dish Gel?\n\nContext:\n[1] # FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemo",
+      "generated_answer": "The lemon variant of FreshSpark Dish Gel is associated with a citrus fragrance.",
       "retrieved_contexts": [
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        4.0,
-        4.0,
-        3.0,
-        3.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
-        "answer_correctness": 0.5555555555555556,
-        "faithfulness": 0.711864406779661,
-        "context_precision": 0.55,
-        "context_recall": 0.8888888888888888
+        "answer_correctness": 1.0,
+        "faithfulness": 1.0,
+        "context_precision": 0.3,
+        "context_recall": 1.0
       },
-      "latency_ms": 0.45819999650120735,
-      "total_tokens": 588,
+      "latency_ms": 2757.6597000006586,
+      "total_tokens": 1027,
       "cost_usd": 0.0
     },
     {
       "query_id": "q004",
       "query": "Is CleanNest Surface Spray recommended for unfinished wood?",
       "ground_truth": "No, CleanNest Surface Spray is not recommended for unfinished wood.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nIs CleanNest Surface Spray recommended for unfinished wood?\n\nContext:\n[1] # FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The",
+      "generated_answer": "No, CleanNest Surface Spray is not recommended for direct application on unfinished wood.",
       "retrieved_contexts": [
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        7.0,
-        7.0,
-        4.0,
-        4.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
-        "answer_correctness": 0.8,
-        "faithfulness": 0.7666666666666667,
-        "context_precision": 0.65,
-        "context_recall": 0.9
+        "answer_correctness": 1.0,
+        "faithfulness": 1.0,
+        "context_precision": 0.33,
+        "context_recall": 1.0
       },
-      "latency_ms": 0.3349999969941564,
-      "total_tokens": 587,
+      "latency_ms": 2492.99999998766,
+      "total_tokens": 967,
       "cost_usd": 0.0
     },
     {
       "query_id": "q005",
       "query": "Who is NutriMalt Choco Drink positioned for?",
       "ground_truth": "NutriMalt Choco Drink is positioned for school-age children.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nWho is NutriMalt Choco Drink positioned for?\n\nContext:\n[1] # FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant ",
+      "generated_answer": "NutriMalt Choco Drink is positioned for school-age children.",
       "retrieved_contexts": [
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "vitamins. It is positioned for school-age children and can be served hot or cold."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        5.0,
-        5.0,
-        3.0,
-        2.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
-        "answer_correctness": 0.6666666666666666,
-        "faithfulness": 0.7540983606557377,
-        "context_precision": 0.6285714285714286,
+        "answer_correctness": 1.0,
+        "faithfulness": 1.0,
+        "context_precision": 0.33,
         "context_recall": 1.0
       },
-      "latency_ms": 0.2773000014713034,
-      "total_tokens": 486,
+      "latency_ms": 2997.2864000010304,
+      "total_tokens": 1072,
       "cost_usd": 0.0
     },
     {
       "query_id": "q006",
       "query": "Can NutriMalt Choco Drink be served cold?",
       "ground_truth": "Yes, NutriMalt Choco Drink can be served hot or cold.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nCan NutriMalt Choco Drink be served cold?\n\nContext:\n[1] # FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is ",
+      "generated_answer": "Yes, NutriMalt Choco Drink can be served hot or cold.",
       "retrieved_contexts": [
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "vitamins. It is positioned for school-age children and can be served hot or cold."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        6.0,
-        6.0,
-        5.0,
-        5.0,
-        3.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
-        "answer_correctness": 0.7,
-        "faithfulness": 0.7777777777777778,
-        "context_precision": 0.8,
-        "context_recall": 0.9
+        "answer_correctness": 1.0,
+        "faithfulness": 1.0,
+        "context_precision": 0.5,
+        "context_recall": 1.0
       },
-      "latency_ms": 0.3156000020680949,
-      "total_tokens": 574,
+      "latency_ms": 2808.966100012185,
+      "total_tokens": 1106,
       "cost_usd": 0.0
     },
     {
       "query_id": "q007",
       "query": "Which detergent is suitable for front-load washing machines?",
       "ground_truth": "GlowSoft Laundry Liquid is suitable for front-load washing machines.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nWhich detergent is suitable for front-load washing machines?\n\nContext:\n[1] ## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.\n\n[2] ## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick",
+      "generated_answer": "GlowSoft Laundry Liquid is suitable for front-load washing machines.",
       "retrieved_contexts": [
-        "## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
-        "## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        6.0,
-        6.0,
-        2.0,
-        2.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
         "answer_correctness": 1.0,
-        "faithfulness": 0.6,
-        "context_precision": 0.4888888888888888,
+        "faithfulness": 1.0,
+        "context_precision": 0.67,
         "context_recall": 1.0
       },
-      "latency_ms": 0.3854000024148263,
-      "total_tokens": 433,
+      "latency_ms": 2224.0451999823563,
+      "total_tokens": 1016,
       "cost_usd": 0.0
     },
     {
       "query_id": "q008",
       "query": "What should users do after washing utensils with FreshSpark Dish Gel?",
       "ground_truth": "Users should rinse utensils thoroughly after washing.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nWhat should users do after washing utensils with FreshSpark Dish Gel?\n\nContext:\n[1] # FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing",
+      "generated_answer": "Users should rinse utensils thoroughly after washing with FreshSpark Dish Gel.",
       "retrieved_contexts": [
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        7.0,
-        7.0,
-        3.0,
-        3.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
         "answer_correctness": 1.0,
-        "faithfulness": 0.7611940298507462,
-        "context_precision": 0.5454545454545455,
+        "faithfulness": 1.0,
+        "context_precision": 0.33,
         "context_recall": 1.0
       },
-      "latency_ms": 0.43339999683666974,
-      "total_tokens": 593,
+      "latency_ms": 2917.1933999750763,
+      "total_tokens": 1085,
       "cost_usd": 0.0
     },
     {
       "query_id": "q009",
       "query": "How should CleanNest Surface Spray be handled on food-contact surfaces?",
       "ground_truth": "Food-contact surfaces should be wiped again with clean water after use.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nHow should CleanNest Surface Spray be handled on food-contact surfaces?\n\nContext:\n[1] # FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washi",
+      "generated_answer": "For food-contact surfaces, CleanNest Surface Spray should be wiped again with clean water after use.",
       "retrieved_contexts": [
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        7.0,
-        7.0,
-        5.0,
-        5.0,
-        2.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
-        "answer_correctness": 0.5,
-        "faithfulness": 0.7638888888888888,
-        "context_precision": 0.5454545454545455,
-        "context_recall": 0.9166666666666666
+        "answer_correctness": 1.0,
+        "faithfulness": 1.0,
+        "context_precision": 0.3,
+        "context_recall": 1.0
       },
-      "latency_ms": 0.32590000046184286,
-      "total_tokens": 591,
+      "latency_ms": 2671.270099992398,
+      "total_tokens": 1051,
       "cost_usd": 0.0
     },
     {
       "query_id": "q010",
       "query": "Should GlowSoft Laundry Liquid be mixed with chlorine bleach?",
       "ground_truth": "No, GlowSoft Laundry Liquid should not be mixed with chlorine bleach in the same wash compartment.",
-      "generated_answer": "Heuristic response based on prompt: Answer the question using only the provided context. If the answer is missing, say so.\n\nQuestion:\nShould GlowSoft Laundry Liquid be mixed with chlorine bleach?\n\nContext:\n[1] GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.\n\n[2] GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compar",
+      "generated_answer": "GlowSoft Laundry Liquid should not be mixed with chlorine bleach in the same wash compartment.",
       "retrieved_contexts": [
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
-        "GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
-        "## GlowSoft Laundry Liquid GlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
-        "# FMCG Product Catalog ## VitaOil Plus VitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel FreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray CleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink NutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold.",
-        "# FMCG Usage Guide VitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend."
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Usage Guide\n\nVitaOil Plus works best for sauteing, shallow frying, and daily meal preparation. The product should be stored in a cool, dry place away from direct sunlight. FreshSpark Dish Gel can be diluted for light cleaning or used directly on tough grease. Users should rinse utensils thoroughly after washing. CleanNest Surface Spray should be sprayed onto a cloth for electronics-adjacent cleaning. For food-contact surfaces, wipe again with clean water after use. NutriMalt Choco Drink mixes easily in milk and can also be used in smoothies. One serving provides iron and B vitamins as part of its fortification blend. GlowSoft Laundry Liquid is effective in short wash cycles and is formulated for low suds. It should not be mixed with chlorine bleach in the same wash compartment.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "# FMCG Product Catalog\n\n## VitaOil Plus\nVitaOil Plus is a fortified sunflower cooking oil designed for everyday Indian kitchens. It is marketed for light taste, reduced frying odor, and added vitamins A and D. ## FreshSpark Dish Gel\nFreshSpark Dish Gel is a concentrated dishwashing liquid intended for grease-heavy utensils. The lemon variant is promoted for fast degreasing and a citrus fragrance. ## CleanNest Surface Spray\nCleanNest Surface Spray is a multi-surface cleaner for kitchen counters, tables, and appliance exteriors. It is not recommended for direct application on unfinished wood. ## NutriMalt Choco Drink\nNutriMalt Choco Drink is a malt-based beverage powder with added iron and B vitamins. It is positioned for school-age children and can be served hot or cold. ## GlowSoft Laundry Liquid\nGlowSoft Laundry Liquid is a low-foam detergent suitable for front-load washing machines. It is promoted for color care and quick rinsing.",
+        "",
+        ""
       ],
       "retrieval_scores": [
-        8.0,
-        8.0,
-        3.0,
-        3.0,
-        3.0
+        1.0,
+        0.5,
+        0.3333333333333333,
+        0.25,
+        0.2,
+        0.16666666666666666
       ],
       "metrics": {
-        "answer_correctness": 0.9375,
-        "faithfulness": 0.627906976744186,
-        "context_precision": 0.6,
-        "context_recall": 0.9375
+        "answer_correctness": 1.0,
+        "faithfulness": 1.0,
+        "context_precision": 0.33,
+        "context_recall": 1.0
       },
-      "latency_ms": 0.3152999997837469,
-      "total_tokens": 424,
+      "latency_ms": 2586.450800008606,
+      "total_tokens": 1016,
       "cost_usd": 0.0
     }
   ],
   "aggregate_metrics": {
-    "mean_correctness": 0.8159722222222222,
-    "mean_faithfulness": 0.7204201705064813,
-    "mean_context_precision": 0.5758369408369408,
-    "mean_context_recall": 0.9543055555555555,
-    "mean_latency_ms": 0.3658199988421984,
+    "mean_correctness": 1.0,
+    "mean_faithfulness": 1.0,
+    "mean_context_precision": 0.375,
+    "mean_context_recall": 1.0,
+    "mean_latency_ms": 2619.761999999173,
     "total_cost_usd": 0.0,
-    "total_tokens": 5226,
-    "p95_latency_ms": 0.501299997267779
+    "total_tokens": 10305,
+    "p95_latency_ms": 2997.2864000010304
   }
 }
